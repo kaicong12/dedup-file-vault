@@ -1,15 +1,22 @@
 from django.shortcuts import render
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
 from .models import File
 from .serializers import FileSerializer
 
 # Create your views here.
 
+class FilePagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 class FileViewSet(viewsets.ModelViewSet):
     queryset = File.objects.all()
     serializer_class = FileSerializer
+    pagination_class = FilePagination
 
     def create(self, request, *args, **kwargs):
         file_obj = request.FILES.get('file')
@@ -50,19 +57,42 @@ class FileViewSet(viewsets.ModelViewSet):
         if file_type and file_type != 'all':
             # Map frontend filter types to file extensions
             file_type_mapping = {
-                'images': ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'],
-                'documents': ['pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'xls', 'xlsx', 'ppt', 'pptx'],
-                'videos': ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'],
-                'audio': ['mp3', 'wav', 'flac', 'aac', 'ogg', 'wma'],
-                'archives': ['zip', 'rar', '7z', 'tar', 'gz', 'bz2']
+                'images': [
+                    'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 
+                    'image/bmp', 'image/svg+xml', 'image/webp', 'image/tiff'
+                ],
+                'documents': [
+                    'application/pdf', 'application/msword', 
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'text/plain', 'application/rtf', 'application/vnd.oasis.opendocument.text',
+                    'application/vnd.ms-excel', 
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'application/vnd.ms-powerpoint', 
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    'text/csv', 'application/vnd.oasis.opendocument.spreadsheet',
+                    'application/vnd.oasis.opendocument.presentation'
+                ],
+                'videos': [
+                    'video/mp4', 'video/avi', 'video/quicktime', 'video/x-msvideo',
+                    'video/x-flv', 'video/webm', 'video/x-matroska', 'video/mpeg',
+                    'video/3gpp', 'video/x-ms-wmv'
+                ],
+                'audio': [
+                    'audio/mpeg', 'audio/wav', 'audio/flac', 'audio/aac',
+                    'audio/ogg', 'audio/x-ms-wma', 'audio/mp3', 'audio/x-wav',
+                    'audio/vorbis', 'audio/mp4'
+                ],
+                'archives': [
+                    'application/zip', 'application/x-rar-compressed', 
+                    'application/x-7z-compressed', 'application/x-tar',
+                    'application/gzip', 'application/x-bzip2', 'application/x-compress',
+                    'application/x-compressed', 'application/x-zip-compressed'
+                ]
             }
             
             if file_type in file_type_mapping:
-                print(file_type, "thijs ios file tyrpe")
-                # Filter by file extensions
                 file_extensions = file_type_mapping[file_type]
-                print(file_extensions, "look for these extensions")
-                queryset = queryset.filter(file_type__icontains=file_extensions)
+                queryset = queryset.filter(file_type__in=file_extensions)
             elif file_type == 'other':
                 # Filter out known file types
                 all_known_types = []

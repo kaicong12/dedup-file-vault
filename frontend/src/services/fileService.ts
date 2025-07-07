@@ -1,13 +1,8 @@
 import axios from "axios";
 import { File as FileType } from "../types/file";
+import { PaginatedResponse, GetFilesParams } from "../types/api";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
-
-export interface GetFilesParams {
-  search?: string;
-  sortBy?: string;
-  fileType?: string;
-}
 
 export const fileService = {
   async uploadFile(file: File): Promise<FileType> {
@@ -22,11 +17,16 @@ export const fileService = {
     return response.data;
   },
 
-  async getFiles(params?: GetFilesParams): Promise<FileType[]> {
+  async getFiles(
+    params?: GetFilesParams
+  ): Promise<PaginatedResponse<FileType>> {
     const queryParams = new URLSearchParams();
 
     if (params?.search) queryParams.append("search", params.search);
     if (params?.sortBy) queryParams.append("sortBy", params.sortBy);
+    if (params?.page) queryParams.append("page", String(params.page));
+    if (params?.page_size)
+      queryParams.append("page_size", String(params.page_size));
     if (params?.fileType) queryParams.append("fileType", params.fileType);
 
     const url = `${API_URL}/files/${

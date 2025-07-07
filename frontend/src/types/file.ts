@@ -5,4 +5,4 @@ export interface File {
   size: number;
   uploaded_at: string;
   file: string;
-} 
+}

@@ -14,23 +14,36 @@ export const FileList: React.FC = () => {
   const [filter, setFilter] = useState<FilterType>("all");
   const [sortBy, setSortBy] = useState<SortType>("date");
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Query for fetching files
   const {
-    data: files,
+    data: paginatedFiles,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["files", debouncedSearchTerm, sortBy, filter],
+    queryKey: [
+      "files",
+      debouncedSearchTerm,
+      sortBy,
+      filter,
+      currentPage,
+      pageSize,
+    ],
     queryFn: () =>
       fileService.getFiles({
         search: debouncedSearchTerm,
         sortBy: sortBy,
         fileType: filter,
+        page: currentPage,
+        page_size: pageSize,
       }),
   });
+
+  const { results: files } = paginatedFiles ?? {};
 
   // Mutation for deleting files
   const deleteMutation = useMutation({
@@ -113,9 +126,33 @@ export const FileList: React.FC = () => {
 
   return (
     <div className="p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">
-        Uploaded Files
-      </h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">Uploaded Files</h2>
+        <div className="flex items-center space-x-4">
+          {/* Items per page selector */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Show:</label>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-2 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+
+          {/* Total count */}
+          <div className="text-sm text-gray-500">
+            {paginatedFiles?.count || 0} total files
+          </div>
+        </div>
+      </div>
 
       {/* Search and Filter Controls */}
       <div className="mb-6 space-y-4">

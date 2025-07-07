@@ -21,3 +21,13 @@ class File(models.Model):
     
     def __str__(self):
         return self.original_filename
+    
+    def delete(self, *args, **kwargs):
+        """Override delete to remove the actual file from storage"""
+        # Delete the file from storage if it exists
+        if self.file:
+            if os.path.isfile(self.file.path):
+                os.remove(self.file.path)
+        
+        # Call the parent delete method to remove from database
+        super().delete(*args, **kwargs)
