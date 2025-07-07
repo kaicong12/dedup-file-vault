@@ -1,37 +1,61 @@
-import React from 'react';
-import { fileService } from '../services/fileService';
-import { File as FileType } from '../types/file';
-import { DocumentIcon, TrashIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from "react";
+import { fileService } from "../services/fileService";
+import { FilterType, SortType } from "../types/filters";
+import {
+  DocumentIcon,
+  TrashIcon,
+  ArrowDownTrayIcon,
+} from "@heroicons/react/24/outline";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useDebounce } from "../hooks/useDebounce";
 
 export const FileList: React.FC = () => {
   const queryClient = useQueryClient();
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [sortBy, setSortBy] = useState<SortType>("date");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // Query for fetching files
-  const { data: files, isLoading, error } = useQuery({
-    queryKey: ['files'],
-    queryFn: fileService.getFiles,
+  const {
+    data: files,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["files", debouncedSearchTerm, sortBy, filter],
+    queryFn: () =>
+      fileService.getFiles({
+        search: debouncedSearchTerm,
+        sortBy: sortBy,
+        fileType: filter,
+      }),
   });
 
   // Mutation for deleting files
   const deleteMutation = useMutation({
     mutationFn: fileService.deleteFile,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['files'] });
+      queryClient.invalidateQueries({ queryKey: ["files"] });
     },
   });
 
   // Mutation for downloading files
   const downloadMutation = useMutation({
-    mutationFn: ({ fileUrl, filename }: { fileUrl: string; filename: string }) =>
-      fileService.downloadFile(fileUrl, filename),
+    mutationFn: ({
+      fileUrl,
+      filename,
+    }: {
+      fileUrl: string;
+      filename: string;
+    }) => fileService.downloadFile(fileUrl, filename),
   });
 
   const handleDelete = async (id: string) => {
     try {
       await deleteMutation.mutateAsync(id);
     } catch (err) {
-      console.error('Delete error:', err);
+      console.error("Delete error:", err);
     }
   };
 
@@ -39,7 +63,7 @@ export const FileList: React.FC = () => {
     try {
       await downloadMutation.mutateAsync({ fileUrl, filename });
     } catch (err) {
-      console.error('Download error:', err);
+      console.error("Download error:", err);
     }
   };
 
@@ -77,7 +101,9 @@ export const FileList: React.FC = () => {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">Failed to load files. Please try again.</p>
+              <p className="text-sm text-red-700">
+                Failed to load files. Please try again.
+              </p>
             </div>
           </div>
         </div>
@@ -87,7 +113,74 @@ export const FileList: React.FC = () => {
 
   return (
     <div className="p-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Uploaded Files</h2>
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        Uploaded Files
+      </h2>
+
+      {/* Search and Filter Controls */}
+      <div className="mb-6 space-y-4">
+        {/* Search Bar */}
+        <div>
+          <input
+            type="text"
+            placeholder="Search files..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+          />
+        </div>
+
+        {/* Filter and Sort Controls */}
+        <div className="flex flex-wrap gap-4">
+          {/* File Type Filter */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Type:</label>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value as FilterType)}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="all">All Files</option>
+              <option value="images">Images</option>
+              <option value="documents">Documents</option>
+              <option value="videos">Videos</option>
+              <option value="audio">Audio</option>
+              <option value="archives">Archives</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          {/* Sort By */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm font-medium text-gray-700">Sort:</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortType)}
+              className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+            >
+              <option value="date">Date (Newest)</option>
+              <option value="name">Name (A-Z)</option>
+              <option value="size">Size (Largest)</option>
+              <option value="type">Type</option>
+            </select>
+          </div>
+
+          {/* Reset Filters */}
+          {(filter !== "all" || searchTerm || sortBy !== "date") && (
+            <button
+              onClick={() => {
+                setFilter("all");
+                setSearchTerm("");
+                setSortBy("date");
+              }}
+              className="px-3 py-1 text-sm text-primary-600 hover:text-primary-700 font-medium ml-auto"
+            >
+              Reset Filters
+            </button>
+          )}
+        </div>
+      </div>
+
       {!files || files.length === 0 ? (
         <div className="text-center py-12">
           <DocumentIcon className="mx-auto h-12 w-12 text-gray-400" />
@@ -118,7 +211,9 @@ export const FileList: React.FC = () => {
                   </div>
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => handleDownload(file.file, file.original_filename)}
+                      onClick={() =>
+                        handleDownload(file.file, file.original_filename)
+                      }
                       disabled={downloadMutation.isPending}
                       className="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                     >
@@ -142,4 +237,4 @@ export const FileList: React.FC = () => {
       )}
     </div>
   );
-}; 
+};
