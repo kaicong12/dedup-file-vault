@@ -41,6 +41,8 @@ INSTALLED_APPS = [
   "rest_framework",
   "corsheaders",
   "files",
+  "dedup",
+  "django_celery_results",
 ]
 
 MIDDLEWARE = [
@@ -149,3 +151,6 @@ REST_FRAMEWORK = {
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # Configure appropriately in production
 CORS_ALLOW_CREDENTIALS = True
+
+# Celery settings
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Redis as the message broker

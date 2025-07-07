@@ -64,3 +64,6 @@ build/
 assessment.cursorrules
 interview-context.md
 base_project_requirements.md
+
+# Redis 
+*rdb

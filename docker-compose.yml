@@ -12,19 +12,45 @@ services:
     environment:
       - DJANGO_DEBUG=True
       - DJANGO_SECRET_KEY=insecure-dev-only-key
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
     restart: always
 
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - REACT_APP_API_URL=http://localhost:8000/api
-  #   depends_on:
-  #     - backend
-  #   restart: always
+  redis:
+    image: redis:6.2
+    ports:
+      - "6379:6379"
+    restart: always
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    volumes:
+      - backend_storage:/app/media
+      - backend_static:/app/staticfiles
+      - backend_data:/app/data
+    environment:
+      - DJANGO_DEBUG=True
+      - DJANGO_SECRET_KEY=insecure-dev-only-key
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - backend
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    restart: always
 
 volumes:
   backend_storage:
