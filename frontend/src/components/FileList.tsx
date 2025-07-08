@@ -9,7 +9,11 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "../hooks/useDebounce";
 
-export const FileList: React.FC = () => {
+interface FileListProps {
+  setIsPolling: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+export const FileList: React.FC<FileListProps> = ({ setIsPolling }) => {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<FilterType>("all");
   const [sortBy, setSortBy] = useState<SortType>("date");
@@ -49,6 +53,8 @@ export const FileList: React.FC = () => {
   const deleteMutation = useMutation({
     mutationFn: fileService.deleteFile,
     onSuccess: () => {
+      setIsPolling(true);
+      queryClient.invalidateQueries({ queryKey: ["dedupData"] });
       queryClient.invalidateQueries({ queryKey: ["files"] });
     },
   });

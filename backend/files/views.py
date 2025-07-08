@@ -7,6 +7,10 @@ from django.db.models import Q
 from .models import File
 from .serializers import FileSerializer
 
+from django.db.models.signals import post_delete
+from .signals import invalidate_and_rerun_dedup_jobs
+from dedup.tasks import deduplicate_files
+
 # Create your views here.
 
 class FilePagination(PageNumberPagination):
@@ -123,3 +127,27 @@ class FileViewSet(viewsets.ModelViewSet):
         # Serialize and return
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def batch_delete(self, request, *args, **kwargs):
+        file_ids = request.data.get('file_ids', [])
+        if not file_ids:
+            return Response({'error': 'No file IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Temporarily disconnect the post_delete signal
+        post_delete.disconnect(receiver=invalidate_and_rerun_dedup_jobs, sender=File)
+
+        try:
+            # Perform batch deletion
+            deleted_count, _ = File.objects.filter(id__in=file_ids).delete()
+        finally:
+            # Reconnect the post_delete signal
+            post_delete.connect(receiver=invalidate_and_rerun_dedup_jobs, sender=File)
+
+        if deleted_count == 0:
+            return Response({'error': 'No files found for the provided IDs'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Manually trigger deduplication after batch delete
+        deduplicate_files.delay()
+        
+        return Response({'message': f'{deleted_count} files deleted successfully'}, status=status.HTTP_200_OK)

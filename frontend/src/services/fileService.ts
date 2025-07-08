@@ -1,8 +1,7 @@
 import axios from "axios";
 import { File as FileType } from "../types/file";
 import { PaginatedResponse, GetFilesParams } from "../types/api";
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000/api";
+import { API_URL } from "./constant";
 
 export const fileService = {
   async uploadFile(file: File): Promise<FileType> {
@@ -43,6 +42,17 @@ export const fileService = {
 
   async deleteFile(id: string): Promise<void> {
     await axios.delete(`${API_URL}/files/${id}/`);
+  },
+
+  async batchDeleteFiles(fileIds: string[]): Promise<void> {
+    try {
+      await axios.post(`${API_URL}/files/batch_delete/`, {
+        file_ids: fileIds,
+      });
+    } catch (error) {
+      console.error("Batch delete error:", error);
+      throw new Error("Failed to delete files");
+    }
   },
 
   async downloadFile(fileUrl: string, filename: string): Promise<void> {
