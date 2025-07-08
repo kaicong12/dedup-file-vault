@@ -90,7 +90,7 @@ function App() {
               >
                 {isLoading
                   ? "Checking for duplicate files..."
-                  : dedupData.duplicates.length
+                  : dedupData?.duplicates?.length
                   ? "View Duplicate Files"
                   : "No duplicates found"}
               </button>
